@@ -1,0 +1,22 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"		"0.9.0"
+			"Previous"		"0.9.0"
+		}
+
+		"Notes"	"First public beta release!"
+	}
+
+	"Files"
+	{
+		"Plugin"		"Path_SM/plugins/dod_hats.smx"
+		"Plugin"		"Path_SM/configs/dod_hats.cfg"
+		"Plugin"		"Path_SM/translations/dod_hats.phrases.txt"
+
+		"Source"		"Path_SM/scripting/dod_hats.sp"
+	}
+}
