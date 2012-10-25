@@ -3,22 +3,22 @@
 	"Hat_Wearing"
 	{
 		"#format"		"{1:s}"
-		"en"			"You are now wearing the {green}{1}"
+		"en"			"You are now wearing the {green}{1}{olive}."
 	}
 	"Hat_Changed"
 	{
 		"#format"		"{1:s}"
-		"en"			"Changed hat on {green}{1}{lightgreen}."
+		"en"			"Changed hat on {green}{1}{olive}."
 	}
 	"Hat_No_Index"
 	{
 		"#format"		"{1:d}{2:d}"
-		"en"			"Cannot find the hat index {green}{1}{lightgreen}, values between {green}1{lightgreen} and {green}{2}{lightgreen}."
+		"en"			"Cannot find the hat index {green}{1}{olive}, values between {green}1{olive} and {green}{2}{olive}."
 	}
 	"Hat_Not_Found"
 	{
 		"#format"		"{1:s}"
-		"en"			"Cannot find the hat {green}{1}{lightgreen}."
+		"en"			"Cannot find the hat {green}{1}{olive}."
 	}
 	"Hat_Invalid"
 	{
@@ -27,22 +27,22 @@
 	"Hat_Unblocked"
 	{
 		"#format"		"{1:s}"
-		"en"			"Unblocked hats for {green}{1}{lightgreen}."
+		"en"			"Unblocked hats for {green}{1}{olive}"
 	}
 	"Hat_Blocked"
 	{
 		"#format"		"{1:s}"
-		"en"			"Blocked hats for {green}{1}{lightgreen}."
+		"en"			"Blocked hats for {green}{1}{olive}"
 	}
 	"Hat_View"
 	{
 		"#format"		"{1:s}"
-		"en"			"{lightgreen}Personal hat view has been turned {green}{1}{lightgreen}."
+		"en"			"{olive}Hat view has been turned {green}{1}{olive}."
 	}
 	"Hat_Ability"
 	{
 		"#format"		"{1:s}"
-		"en"			"{lightgreen}You have turned {green}{1}{lightgreen} the ability to wear hats."
+		"en"			"{olive}You have turned {green}{1}{olive} the ability to wear hats."
 	}
 	"Hat_On"
 	{
