@@ -4,13 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"		"0.9.2"
-			"Previous"		"0.9.0"
+			"Latest"		"0.9.3"
+			"Previous"		"0.9.2"
 		}
 
-		"Notes"	"Huge bugfix"
-		"Notes"	"Removed soooo many useless checks > greatly optimized plugin"
-		"Notes"	"Improvements"
+		"Notes"	"Improvements, bugfixes"
+		"Notes" "Added proper configuration file"
 	}
 
 	"Files"

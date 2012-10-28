@@ -12,7 +12,7 @@
 #define PLUGIN_NAME    "DoD:S Hats"
 #define PLUGIN_VERSION "0.9.2"
 
-#define CHAT_TAG       "\x04[DoD:S Hats]\x05 "
+#define PREFIX         "{green}[DoD:S Hats]{olive} "
 #define UPDATE_URL     "https://raw.github.com/zadroot/DoD_Hats/master/updater.txt"
 #define DOD_MAXPLAYERS 33
 #define	MAX_HATS       64
@@ -59,11 +59,11 @@ public OnPluginStart()
 {
 	CreateConVar("dod_hats_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_NOTIFY|FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED);
 
-	dodhats_enable       = CreateConVar("dod_hats_allow",  "1",   "Whether or not enable hats plugin", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	dodhats_access       = CreateConVar("dod_hats_menu",   "",    "Add specify admin flag or blank to allow all players access to the hats menu", FCVAR_PLUGIN);
-	dodhats_opacity      = CreateConVar("dod_hats_opaque", "255", "How transparent or solid should the hats appear:\n0   = Translucent\n255 = Opaque", FCVAR_PLUGIN, true, 0.0, true, 255.0);
-	dodhats_random       = CreateConVar("dod_hats_random", "1",   "Whether or not attach a random hat when player respawning (saved hats will be ignored)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	dodhats_clientprefs  = CreateConVar("dod_hats_save",   "1",   "Whether or not save the players selected hats and attach when they spawn or rejoin the server\n0 = Dont save", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	dodhats_enable      = CreateConVar("dod_hats_allow",  "1",   "Whether or not enable hats", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	dodhats_access      = CreateConVar("dod_hats_menu",   "",    "Add specify admin flag or blank to allow all players access to the hats menu", FCVAR_PLUGIN);
+	dodhats_opacity     = CreateConVar("dod_hats_opaque", "255", "How transparent or solid should the hats appear:\n0   = Translucent\n255 = Opaque", FCVAR_PLUGIN, true, 0.0, true, 255.0);
+	dodhats_random      = CreateConVar("dod_hats_random", "1",   "Whether or not attach a random hat when player respawning (saved hats will be ignored)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	dodhats_clientprefs = CreateConVar("dod_hats_save",   "1",   "Whether or not save the players selected hats and attach when they spawn or rejoin the server\n0 = Dont save", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 
 	HookConVarChange(dodhats_enable, OnConVarChange);
 
@@ -72,7 +72,7 @@ public OnPluginStart()
 	RegConsoleCmd("sm_hatoff",    Command_DisableHat,                 "Toggle to turn on or off the ability of wearing hats");
 	RegConsoleCmd("sm_hatshow",   Command_ShowHat,                    "Toggle to see or hide your own hat");
 	RegConsoleCmd("sm_hatview",   Command_ShowHat,                    "Alias for \"sm_hatview\"");
-	RegAdminCmd  ("sm_hatreload", Admin_ReloadConfig,   ADMFLAG_ROOT, "Reload \"dod_hats.cfg\"");
+	RegAdminCmd  ("sm_hatreload", Admin_ReloadConfig,   ADMFLAG_ROOT, "Reload hats configuration fie");
 	RegAdminCmd  ("sm_hatoffc",   Admin_DisableHat,     ADMFLAG_ROOT, "Toggle the ability of wearing hats on specific players");
 	RegAdminCmd  ("sm_hatblock",  Admin_DisableHat,     ADMFLAG_ROOT, "Alias for \"sm_hatoffc\"");
 	RegAdminCmd  ("sm_hatc",      Admin_ShowHatMenu,    ADMFLAG_ROOT, "Displays a menu listing players, select one to change their hat");
@@ -120,6 +120,12 @@ public OnPluginStart()
 	dodhats_cookie = RegClientCookie("dod_hats", "Hat Model", CookieAccess_Protected);
 }
 
+public OnPluginEnd()
+{
+	for (new i = 1; i <= MaxClients; i++)
+	if (IsValidClient(i)) RemoveHat(i);
+}
+
 public OnMapStart()
 {
 	for (new i = 0; i < hats_count; i++)
@@ -164,20 +170,19 @@ public OnConVarChange(Handle:convar, const String:oldValue[], const String:newVa
 
 LoadEvents()
 {
-	HookEvent("player_hurt",     Event_PlayerHurt);
-	HookEvent("player_spawn",    Event_PlayerSpawn);
+	HookEvent("player_hurt",  Event_PlayerHurt);
+	HookEvent("player_spawn", Event_PlayerSpawn);
 }
 
 UnhookEvents()
 {
-	UnhookEvent("player_hurt",     Event_PlayerHurt);
-	UnhookEvent("player_spawn",    Event_PlayerSpawn);
+	UnhookEvent("player_hurt",  Event_PlayerHurt);
+	UnhookEvent("player_spawn", Event_PlayerSpawn);
 }
 
 public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-
 	if (GetClientHealth(client) < 1) RemoveHat(client);
 }
 
@@ -192,8 +197,7 @@ public Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 
 		if (GetConVarBool(dodhats_random))
 			RandomHat();
-		else
-			CreateTimer(0.1, Timer_CreateHat, clientID);
+		else CreateTimer(0.1, Timer_CreateHat, clientID);
 	}
 }
 
@@ -211,7 +215,7 @@ public Action:Command_Hat(client, args)
 		{
 			if (IsValidClient(client) || !(flagc & hat_flag))
 			{
-				CPrintToChat(client, "%s%t", CHAT_TAG, "No Access");
+				CPrintToChat(client, "%s%t", PREFIX, "No Access");
 				return Plugin_Handled;
 			}
 		}
@@ -225,12 +229,9 @@ public Action:Command_Hat(client, args)
 				new index = StringToInt(text);
 				if (index < 1 || index >= (hats_count + 1))
 				{
-					CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_No_Index", index, hats_count);
+					CPrintToChat(client, "%s%t", PREFIX, "Hat_No_Index", index, hats_count);
 				}
-				else
-				{
-					RemoveHat(client);
-				}
+				else RemoveHat(client);
 			}
 			else
 			{
@@ -245,17 +246,14 @@ public Action:Command_Hat(client, args)
 					}
 				}
 
-				CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Not_Found", text);
+				CPrintToChat(client, "%s%t", PREFIX, "Hat_Not_Found", text);
 			}
 		}
-		else
-		{
-			ShowMenu(client);
-		}
+		else ShowMenu(client);
 	}
 	else
 	{
-		CPrintToChat(client, "%s%t", CHAT_TAG, "No Access");
+		CPrintToChat(client, "%s%t", PREFIX, "No Access");
 		return Plugin_Handled;
 	}
 
@@ -275,11 +273,11 @@ public Action:Command_DisableHat(client, args)
 
 		decl String:text[32];
 		Format(text, sizeof(text), "%T", hats_enabled[client] ? "Hat_Off" : "Hat_On", client);
-		CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Ability", text);
+		CPrintToChat(client, "%s%t", PREFIX, "Hat_Ability", text);
 	}
 	else
 	{
-		CPrintToChat(client, "%s%t", CHAT_TAG, "No Access");
+		CPrintToChat(client, "%s%t", PREFIX, "No Access");
 		return Plugin_Handled;
 	}
 
@@ -293,7 +291,7 @@ public Action:Command_ShowHat(client, args)
 		new entity = hat_index[client];
 		if (entity == 0 || (entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
 		{
-			CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Missing");
+			CPrintToChat(client, "%s%t", PREFIX, "Hat_Missing");
 			return Plugin_Handled;
 		}
 
@@ -312,11 +310,11 @@ public Action:Command_ShowHat(client, args)
 
 		decl String:text[32];
 		Format(text, sizeof(text), "%T", hat_drawn[client] ? "Hat_On" : "Hat_Off", client);
-		CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_View", text);
+		CPrintToChat(client, "%s%t", PREFIX, "Hat_View", text);
 	}
 	else
 	{
-		CPrintToChat(client, "%s%t", CHAT_TAG, "No Access");
+		CPrintToChat(client, "%s%t", PREFIX, "No Access");
 		return Plugin_Handled;
 	}
 
@@ -326,6 +324,7 @@ public Action:Command_ShowHat(client, args)
 public Action:Admin_ReloadConfig(client, args)
 {
 	LoadConfig();
+	CPrintToChat(client, "%s%t", PREFIX, "Reloaded Config");
 	return Plugin_Handled;
 }
 
@@ -354,13 +353,13 @@ public Action:Admin_AddHat(client, args)
 					SaveConfig(config);
 					CloseHandle(config);
 					hats_count++;
-					ReplyToCommand (client, "%sAdded hat '\04%s\x05' %d/%d", CHAT_TAG, text, hats_count, MAX_HATS);
+					CPrintToChat (client, "%s%t", PREFIX, "Added Hat", text, hats_count, MAX_HATS);
 				}
-				else ReplyToCommand(client, "%sCould not find the model '\04%s\x05'. Not adding to config.", CHAT_TAG, text);
+				else CPrintToChat(client, "%s%t", PREFIX, "Cant Add", text);
 			}
 			else
 			{
-				ReplyToCommand(client, "%sReached maximum number of hats (%d)", CHAT_TAG, MAX_HATS);
+				CPrintToChat(client, "%s%t", PREFIX, "Reached Max", MAX_HATS);
 			}
 		}
 	}
@@ -403,12 +402,9 @@ public Action:Admin_SaveHat(client, args)
 				hatsize[index] = siz;
 
 				SaveConfig(config);
-				PrintToChat(client, "%sSaved '\x04%s\x05' hat origin and angles.", CHAT_TAG, Models[index]);
+				CPrintToChat(client, "%s%t", PREFIX, "Saved Hat", Models[index]);
 			}
-			else
-			{
-				PrintToChat(client, "%s\x04Warning: \x05Could not save '\x04%s\x05' hat origin and angles!", CHAT_TAG, Models[index]);
-			}
+			else CPrintToChat(client, "%s%t", PREFIX, "Cant Save", Models[index]);
 			CloseHandle(config);
 		}
 	}
@@ -431,16 +427,13 @@ public Action:Admin_DeleteHat(client, args)
 				index = StringToInt(text);
 				if (index < 1 || index >= (hats_count + 1))
 				{
-					ReplyToCommand(client, "%sCannot find the hat index \x04%d\x05, values between \x041\x05 and \x04%d\x05", CHAT_TAG, index, hats_count);
+					CPrintToChat(client, "%s%t", PREFIX, "Index Invalid", index, hats_count);
 					return Plugin_Handled;
 				}
 				index--;
 				strcopy(text, sizeof(text), Models[index]);
 			}
-			else
-			{
-				index = 0;
-			}
+			else index = 0;
 
 			new Handle:config = OpenConfig();
 
@@ -464,7 +457,7 @@ public Action:Admin_DeleteHat(client, args)
 						KvGetString(config, "model", model, sizeof(model));
 						if (StrContains(model, text) != -1)
 						{
-							ReplyToCommand(client, "%sYou have deleted the hat '\x04%s\x05'", CHAT_TAG, model);
+							CPrintToChat(client, "%s%t", PREFIX, "Deleted Hat", model);
 							KvDeleteKey(config, text);
 
 							hats_count--;
@@ -478,8 +471,7 @@ public Action:Admin_DeleteHat(client, args)
 				if (i == MAX_HATS)
 				{
 					if (isDeleted) SaveConfig(config);
-					else
-						ReplyToCommand(client, "%sCould not delete hat, did not find model '\x04%s\x05'", CHAT_TAG, text);
+					else CPrintToChat(client, "%s%t", PREFIX, "Cant Delete", text);
 				}
 			}
 			CloseHandle(config);
@@ -488,7 +480,7 @@ public Action:Admin_DeleteHat(client, args)
 		{
 			new index = hat_selected[client];
 
-			CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Wearing", Names[index]);
+			CPrintToChat(client, "%s%t", PREFIX, "Hat_Wearing", Names[index]);
 		}
 	}
 
@@ -500,7 +492,7 @@ public Action:Admin_RandomizeHats(client, args)
 	if (GetConVarBool(dodhats_enable))
 	{
 		for (new i = 1; i <= MaxClients; i++)
-			RemoveHat(i);
+		if (IsValidClient(i)) RemoveHat(i);
 
 		RandomHat();
 	}
@@ -513,7 +505,7 @@ public Action:Admin_ForceHat(client, args)
 	if (GetConVarBool(dodhats_enable))
 	{
 		new selected = hat_selected[client];
-		PrintToChat(client, "%sLoaded hat '\x04%s\x05' on all players.", CHAT_TAG, Models[selected]);
+		CPrintToChat(client, "%s%t", PREFIX, "Forced Hat", Models[selected]);
 
 		for (new i = 1; i <= MaxClients; i++)
 		{
@@ -596,17 +588,17 @@ public HatMenu(Handle:menu, MenuAction:action, client, index)
 					decl String:name[MAX_NAME_LENGTH];
 					GetClientName(target, name, sizeof(name));
 
-					CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Changed", name);
+					CPrintToChat(client, "%s%t", PREFIX, "Hat_Changed", name);
 					RemoveHat(target);
 
 					if (CreateHat(target, index))
 					{
-						CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Wearing", Names[index]);
+						CPrintToChat(client, "%s%t", PREFIX, "Hat_Wearing", Names[index]);
 					}
 				}
 				else
 				{
-					CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Invalid");
+					CPrintToChat(client, "%s%t", PREFIX, "Hat_Invalid");
 				}
 
 				return;
@@ -616,7 +608,7 @@ public HatMenu(Handle:menu, MenuAction:action, client, index)
 				RemoveHat(client);
 				if (CreateHat(client, index))
 				{
-					CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Wearing", Names[index]);
+					CPrintToChat(client, "%s%t", PREFIX, "Hat_Wearing", Names[index]);
 				}
 			}
 
@@ -630,7 +622,7 @@ public PlayersMenu(Handle:menu, MenuAction:action, client, index)
 {
 	switch (action)
 	{
-		case MenuAction_End: CloseHandle(menu);
+		case MenuAction_End: if (client > 0) CloseHandle(menu);
 		case MenuAction_Select:
 		{
 			decl String:text[32];
@@ -651,7 +643,7 @@ public PlayersMenu(Handle:menu, MenuAction:action, client, index)
 
 						decl String:name[MAX_NAME_LENGTH];
 						GetClientName(target, name, sizeof(name));
-						CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Unblocked", name);
+						CPrintToChat(client, "%s%t", PREFIX, "Hat_Unblocked", name);
 					}
 				}
 				else
@@ -659,7 +651,7 @@ public PlayersMenu(Handle:menu, MenuAction:action, client, index)
 					decl String:name[MAX_NAME_LENGTH];
 					GetClientName(target, name, sizeof(name));
 					GetClientAuthString(target, SteamID[target], sizeof(SteamID));
-					CPrintToChat(client, "%s%t", CHAT_TAG, "Hat_Blocked", name);
+					CPrintToChat(client, "%s%t", PREFIX, "Hat_Blocked", name);
 					RemoveHat(target);
 				}
 			}
@@ -715,7 +707,7 @@ public AnglesMenu(Handle:menu, MenuAction:action, client, index)
 					}
 				}
 
-				CPrintToChat(client, "%sNew hat angles: \x04%.0f %.0f %.0f", CHAT_TAG, ang[0], ang[1], ang[2]);
+				CPrintToChat(client, "%s%t", PREFIX, "New Angles", ang[0], ang[1], ang[2]);
 			}
 		}
 	}
@@ -760,7 +752,7 @@ public OriginMenu(Handle:menu, MenuAction:action, client, index)
 					}
 				}
 
-				CPrintToChat(client, "%sNew hat origin: \x04%.1f %.1f %.1f", CHAT_TAG, ori[0], ori[1], ori[2]);
+				CPrintToChat(client, "%s%t", PREFIX, "New Origin", ori[0], ori[1], ori[2]);
 			}
 		}
 	}
@@ -805,7 +797,7 @@ public SizeMenu(Handle:menu, MenuAction:action, client, index)
 					}
 				}
 
-				CPrintToChat(client, "%sNew hat scale: %.1f", CHAT_TAG, siz);
+				CPrintToChat(client, "%s%t", PREFIX, "New Size", siz);
 			}
 		}
 	}
@@ -949,7 +941,7 @@ ShowPlayerList(client)
 
 	for (new i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && !IsClientObserver(i))
+		if (client > 0 && IsClientInGame(i) && !IsClientObserver(i))
 		{
 			IntToString(GetClientUserId(i), text, sizeof(text));
 			GetClientName(i, name, sizeof(name));
@@ -957,8 +949,12 @@ ShowPlayerList(client)
 		}
 	}
 
-	if (hats_adminmenu[client]) SetMenuTitle(menu, "Select player to enable or disable hats:");
-	else                        SetMenuTitle(menu, "Select player to change hat:");
+	decl String:title1[32], String:title2[32];
+	Format(title1, sizeof(title1), "%t", "Toggle on player");
+	Format(title2, sizeof(title2), "%t", "Change on player");
+
+	if (hats_adminmenu[client]) SetMenuTitle(menu, title1);
+	else                        SetMenuTitle(menu, title2);
 
 	SetMenuExitButton(menu, true);
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
@@ -976,7 +972,10 @@ ShowAnglesMenu(client)
 	AddMenuItem(menu, NULL_STRING, "Y - 5.0");
 	AddMenuItem(menu, NULL_STRING, "Z - 5.0");
 
-	SetMenuTitle(menu, "Set hat angles:");
+	decl String:title[32];
+	Format(title, sizeof(title), "%t", "Set Angles");
+
+	SetMenuTitle(menu, title);
 	SetMenuExitButton(menu, true);
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
@@ -993,7 +992,10 @@ ShowOriginMenu(client)
 	AddMenuItem(menu, NULL_STRING, "Y - 0.5");
 	AddMenuItem(menu, NULL_STRING, "Z - 0.5");
 
-	SetMenuTitle(menu, "Set hat position:");
+	decl String:title[32];
+	Format(title, sizeof(title), "%t", "Set Origin");
+
+	SetMenuTitle(menu, title);
 	SetMenuExitButton(menu, true);
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
@@ -1009,7 +1011,10 @@ ShowSizeMenu(client)
 	AddMenuItem(menu, NULL_STRING, "+ 1.0");
 	AddMenuItem(menu, NULL_STRING, "-  1.0");
 
-	SetMenuTitle(menu, "Set hat size:");
+	decl String:title[32];
+	Format(title, sizeof(title), "%t", "Set Size");
+
+	SetMenuTitle(menu, title);
 	SetMenuExitButton(menu, true);
 	DisplayMenu(menu, client, MENU_TIME_FOREVER);
 }
@@ -1119,15 +1124,15 @@ ThirdPerson(client, bool:status)
 	if (status)
 	{
 		SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", 0);
-		SetEntProp(client,    Prop_Send, "m_iObserverMode", 1);
-		SetEntProp(client,    Prop_Send, "m_bDrawViewmodel", 0);
+		SetEntProp(client,    Prop_Send, "m_iObserverMode",   1);
+		SetEntProp(client,    Prop_Send, "m_bDrawViewmodel",  0);
 		SetEntProp(client,    Prop_Send, "m_iFOV", 100);
 	}
 	else
 	{
 		SetEntPropEnt(client, Prop_Send, "m_hObserverTarget", 1);
-		SetEntProp(client,    Prop_Send, "m_iObserverMode", 0);
-		SetEntProp(client,    Prop_Send, "m_bDrawViewmodel", 1);
+		SetEntProp(client,    Prop_Send, "m_iObserverMode",   0);
+		SetEntProp(client,    Prop_Send, "m_bDrawViewmodel",  1);
 		SetEntProp(client,    Prop_Send, "m_iFOV", 90);
 	}
 }
