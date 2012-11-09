@@ -11,7 +11,7 @@
 	}
 	"Hat_Changed"
 	{
-		"#format"		"{1:s}"
+		"#format"		"{1:N}"
 		"en"			"Changed hat on {green}{1}{olive}."
 	}
 	"Hat_No_Index"
@@ -30,12 +30,12 @@
 	}
 	"Hat_Unblocked"
 	{
-		"#format"		"{1:s}"
+		"#format"		"{1:N}"
 		"en"			"Unblocked hats for {green}{1}{olive}"
 	}
 	"Hat_Blocked"
 	{
-		"#format"		"{1:s}"
+		"#format"		"{1:N}"
 		"en"			"Blocked hats for {green}{1}{olive}"
 	}
 	"Hat_View"
@@ -71,13 +71,17 @@
 	}
 	"Cant Add"
 	{
-		"#format"		"{1:s}{2:i}{3:i}"
+		"#format"		"{1:s}"
 		"en"			"Could not find the model '{green}{1}{olive}'. Not adding to config."
 	}
 	"Reached max"
 	{
 		"#format"		"{1:i}"
 		"en"			"Reached maximum number of hats {green}(max %d)"
+	}
+	"Usage AddHat"
+	{
+		"en"			"Usage: sm_hatadd \"{green}full model path{olive}\""
 	}
 	"Saved Hat"
 	{
