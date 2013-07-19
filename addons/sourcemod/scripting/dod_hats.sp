@@ -13,10 +13,10 @@
 
 // ====[ STOCK INCLUDES ]=================================================
 #include <sdktools>
+#include <sdkhooks>
 #include <clientprefs>
 
 // ====[ CUSTOM INCLUDES ]================================================
-#include <sdkhooks>
 #include <colors>
 #undef REQUIRE_PLUGIN
 #include <updater>
@@ -33,7 +33,6 @@
 // ====[ VARIABLES ]======================================================
 new	Handle:dodhats_enable      = INVALID_HANDLE,
 	Handle:dodhats_access      = INVALID_HANDLE,
-	Handle:dodhats_opacity     = INVALID_HANDLE,
 	Handle:dodhats_random      = INVALID_HANDLE,
 	Handle:dodhats_clientprefs = INVALID_HANDLE,
 	Handle:dodhats_cookie      = INVALID_HANDLE,
@@ -47,15 +46,12 @@ new	hats_count,                       // Amount of avalible hats
 	hat_save[DOD_MAXPLAYERS + 1];     // Stores selected hat to give players
 
 new	bool:hat_drawn[DOD_MAXPLAYERS + 1],      // Player view of hat on/off
-	bool:hats_enabled[DOD_MAXPLAYERS + 1],   // Lets players turn their hats on/off
-	bool:hats_adminmenu[DOD_MAXPLAYERS + 1], // Admin var for menu
-	bool:hats_blocked[DOD_MAXPLAYERS + 1];   // Determines if the player is blocked from hats
+	bool:hats_disabled[DOD_MAXPLAYERS + 1],  // Lets players turn their hats on/off
+	bool:hats_adminmenu[DOD_MAXPLAYERS + 1]; // Admin var for menu
 
 new	String:Models[MAX_HATS][64],
 	String:Names[MAX_HATS][64],
-	String:SteamID[DOD_MAXPLAYERS + 1][32]; // Stores client steamid to determine if its a blocked player
-
-new	Float:hatangles[MAX_HATS][3],
+	Float:hatangles[MAX_HATS][3],
 	Float:hatposition[MAX_HATS][3],
 	Float:hatsize[MAX_HATS];
 
@@ -90,11 +86,10 @@ public OnPluginStart()
 	// Create ConVars
 	CreateConVar("dod_hats_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
-	dodhats_enable      = CreateConVar("dod_hats_enable",  "1",   "Whether or not enable DoD:S Hats plugin",                                                    FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	dodhats_enable      = CreateConVar("dod_hats_enable",  "1",   "Whether or not enable Hats plugin",                                                          FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	dodhats_access      = CreateConVar("dod_hats_admflag", "",    "Add specified admin flag name or blank to allow all players access to the hats menu",        FCVAR_PLUGIN);
-	dodhats_opacity     = CreateConVar("dod_hats_opaque",  "255", "How transparent or solid should the hats appear:\n0   = Translucent\n255 = Opaque",          FCVAR_PLUGIN, true, 0.0, true, 255.0);
 	dodhats_random      = CreateConVar("dod_hats_random",  "1",   "Whether or not attach a random hat when player is respawning (saved hats will be ignored)",  FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	dodhats_clientprefs = CreateConVar("dod_hats_save",    "1",   "Whether or not save player's selected hats and attach when they spawn or rejoin the server", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	dodhats_clientprefs = CreateConVar("dod_hats_save",    "1",   "Whether or not save players selected hats and attach when they spawn or rejoin the server",  FCVAR_PLUGIN, true, 0.0, true, 1.0);
 
 	// Hook only one convar changing - on enable toggle
 	HookConVarChange(dodhats_enable, OnConVarChange);
@@ -105,25 +100,25 @@ public OnPluginStart()
 	RegConsoleCmd("sm_hatoff",    Command_DisableHat,                "Toggle to turn on or off the ability of wearing hats");
 	RegConsoleCmd("sm_hatshow",   Command_ShowHat,                   "Toggle to see or hide your own hat");
 	RegConsoleCmd("sm_hatview",   Command_ShowHat,                   "Alias for \"sm_hatview\"");
-	RegAdminCmd  ("sm_hatreload", Admin_ReloadConfig,  ADMFLAG_ROOT, "Reload hats configuration file");
-	RegAdminCmd  ("sm_hatoffc",   Admin_DisableHat,    ADMFLAG_ROOT, "Toggle the ability of wearing hats on specific players");
-	RegAdminCmd  ("sm_hatblock",  Admin_DisableHat,    ADMFLAG_ROOT, "Alias for \"sm_hatoffc\"");
-	RegAdminCmd  ("sm_hatc",      Admin_ShowHatMenu,   ADMFLAG_ROOT, "Displays a menu listing players, select one to change their hat");
-	RegAdminCmd  ("sm_hatchange", Admin_ShowHatMenu,   ADMFLAG_ROOT, "Alias for \"sm_hatc\"");
-	RegAdminCmd  ("sm_hatrandom", Admin_RandomizeHats, ADMFLAG_ROOT, "Randomizes all players hats");
-	RegAdminCmd  ("sm_hatrand",   Admin_RandomizeHats, ADMFLAG_ROOT, "Alias for \"sm_hatrandom\"");
-	RegAdminCmd  ("sm_hatadd",    Admin_AddHat,        ADMFLAG_ROOT, "Adds specified model to the config (must be the full model path)");
-	RegAdminCmd  ("sm_hatdel",    Admin_DeleteHat,     ADMFLAG_ROOT, "Removes a model from the config (either by index or partial name matching)");
-	RegAdminCmd  ("sm_hatdelete", Admin_DeleteHat,     ADMFLAG_ROOT, "Alias for \"sm_hatdel\"");
-	RegAdminCmd  ("sm_hatlist",   Admin_ShowHatList,   ADMFLAG_ROOT, "Displays a list of all the hat models (for use with sm_hatdel)");
-	RegAdminCmd  ("sm_hatsave",   Admin_SaveHat,       ADMFLAG_ROOT, "Saves the hat position and angels to the hat config");
-	RegAdminCmd  ("sm_hatload",   Admin_ForceHat,      ADMFLAG_ROOT, "Changes all players hats to the one you have");
-	RegAdminCmd  ("sm_hatforce",  Admin_ForceHat,      ADMFLAG_ROOT, "Alias for \"sm_hatload\"");
-	RegAdminCmd  ("sm_hatang",    Admin_ChangeAngles,  ADMFLAG_ROOT, "Shows a menu allowing you to adjust the hat angles (affects all hats/players)");
-	RegAdminCmd  ("sm_hatangles", Admin_ChangeAngles,  ADMFLAG_ROOT, "Alias for \"sm_hatang\"");
-	RegAdminCmd  ("sm_hatpos",    Admin_ChangeOrigin,  ADMFLAG_ROOT, "Shows a menu allowing you to adjust the hat position (affects all hats/players)");
-	RegAdminCmd  ("sm_hatorigin", Admin_ChangeOrigin,  ADMFLAG_ROOT, "Alias for \"sm_hatpos\"");
-	RegAdminCmd  ("sm_hatsize",   Admin_ChangeSize,    ADMFLAG_ROOT, "Shows a menu allowing you to adjust the hat size (affects all hats/players)");
+	RegAdminCmd  ("sm_hatreload",  Admin_ReloadConfig,  ADMFLAG_ROOT, "Reload hats configuration file");
+	RegAdminCmd  ("sm_hatrefresh", Admin_ReloadConfig,  ADMFLAG_ROOT, "Alias for \"sm_hatreload\"");
+	RegAdminCmd  ("sm_hatc",       Admin_ShowHatMenu,   ADMFLAG_ROOT, "Displays a menu listing players, select one to change their hat");
+	RegAdminCmd  ("sm_hatclient",  Admin_ShowHatMenu,   ADMFLAG_ROOT, "Alias for \"sm_hatc\"");
+	RegAdminCmd  ("sm_hatchange",  Admin_ShowHatMenu,   ADMFLAG_ROOT, "Alias for \"sm_hatc\"");
+	RegAdminCmd  ("sm_hatrandom",  Admin_RandomizeHats, ADMFLAG_ROOT, "Randomizes all players hats");
+	RegAdminCmd  ("sm_hatrand",    Admin_RandomizeHats, ADMFLAG_ROOT, "Alias for \"sm_hatrandom\"");
+	RegAdminCmd  ("sm_hatadd",     Admin_AddHat,        ADMFLAG_ROOT, "Adds specified model to the config (must be the full model path)");
+	RegAdminCmd  ("sm_hatdel",     Admin_DeleteHat,     ADMFLAG_ROOT, "Removes a model from the config (either by index or partial name matching)");
+	RegAdminCmd  ("sm_hatdelete",  Admin_DeleteHat,     ADMFLAG_ROOT, "Alias for \"sm_hatdel\"");
+	RegAdminCmd  ("sm_hatlist",    Admin_ShowHatList,   ADMFLAG_ROOT, "Displays a list of all the hat models (for use with sm_hatdel)");
+	RegAdminCmd  ("sm_hatsave",    Admin_SaveHat,       ADMFLAG_ROOT, "Saves the hat position and angels to the hat config");
+	RegAdminCmd  ("sm_hatload",    Admin_ForceHat,      ADMFLAG_ROOT, "Changes all players hats to the one you have");
+	RegAdminCmd  ("sm_hatforce",   Admin_ForceHat,      ADMFLAG_ROOT, "Alias for \"sm_hatload\"");
+	RegAdminCmd  ("sm_hatang",     Admin_ChangeAngles,  ADMFLAG_ROOT, "Shows a menu allowing you to adjust the hat angles (affects all hats/players)");
+	RegAdminCmd  ("sm_hatangles",  Admin_ChangeAngles,  ADMFLAG_ROOT, "Alias for \"sm_hatang\"");
+	RegAdminCmd  ("sm_hatpos",     Admin_ChangeOrigin,  ADMFLAG_ROOT, "Shows a menu allowing you to adjust the hat position (affects all hats/players)");
+	RegAdminCmd  ("sm_hatorigin",  Admin_ChangeOrigin,  ADMFLAG_ROOT, "Alias for \"sm_hatpos\"");
+	RegAdminCmd  ("sm_hatsize",    Admin_ChangeSize,    ADMFLAG_ROOT, "Shows a menu allowing you to adjust the hat size (affects all hats/players)");
 
 	// Load translations
 	LoadTranslations("common.phrases");
@@ -132,31 +127,11 @@ public OnPluginStart()
 	// Create and exec plugin's configuration file
 	AutoExecConfig(true, "dod_hats");
 
-	// Load hats config and hook needed events
-	LoadConfig();
-	HookEvents();
-
-	// Create hats menu
-	dodhats_menu = CreateMenu(HatMenu);
-
-	// Add hats in menu as items (and check how many hats are avalible)
-	for (new i = 0; i < hats_count; i++)
-		AddMenuItem(dodhats_menu, Models[i], Names[i]);
-
-	// Create a title (for normal and clientprefs menus)
-	decl String:title[32];
-	Format(title, sizeof(title), "%t", "Hat_Menu_Title");
-
-	SetMenuTitle(dodhats_menu, title);
-	SetMenuExitButton(dodhats_menu, true);
+	// Load events by manual cvar change
+	OnConVarChange(dodhats_enable, "0", "1");
 
 	// Adds plugin to the updater if selftitled library is avalible
-	if (LibraryExists("updater"))
-		Updater_AddPlugin(UPDATE_URL);
-
-	// Clientprefs avalible - create panel
-	if (LibraryExists("clientprefs"))
-		SetCookieMenuItem(HatCookieMenu, 0, title);
+	if (LibraryExists("updater")) Updater_AddPlugin(UPDATE_URL);
 
 	// Creates a new Client preference cookies
 	dodhats_cookie = RegClientCookie("dod_hats", "Hat Model", CookieAccess_Protected);
@@ -179,9 +154,14 @@ public OnPluginEnd()
  * ----------------------------------------------------------------------- */
 public OnMapStart()
 {
-	// Precache all avalible hats
-	// ToDo: add downloader support?
-	for (new i = 0; i < hats_count; i++) PrecacheModel(Models[i]);
+	// Precache all available hats
+	// ToDo: add downloader support ?
+	LoadConfig();
+
+	for (new i = 0; i < hats_count; i++)
+	{
+		PrecacheModel(Models[i]);
+	}
 }
 
 /* OnLibraryAdded()
@@ -194,36 +174,14 @@ public OnLibraryAdded(const String:name[])
 	if (StrEqual(name, "updater")) Updater_AddPlugin(UPDATE_URL);
 }
 
-/* OnLibraryAdded()
+/* OnClientCookiesCached()
  *
- * When a client receives a Steam ID.
- * ----------------------------------------------------------------------- */
-public OnClientAuthorized(client, const String:auth[])
+ * Called once a client's saved cookies have been loaded from the database.
+ * -------------------------------------------------------------------------- */
+public OnClientCookiesCached(client)
 {
-	// Client is banned to use hats
-	if (hats_blocked[client])
-	{
-		// Ignore bot
-		if (IsFakeClient(client)) hats_blocked[client] = false;
-
-		// Compare banned steamid and connected player's steamid
-		else if (strcmp(auth, SteamID[client]))
-		{
-			// If steamids is not equal - ignore player
-			strcopy(SteamID[client], sizeof(SteamID), auth);
-			hats_blocked[client] = false;
-		}
-	}
-
-	// Remove banned client from adminmenu
-	hats_adminmenu[client] = false;
-
-	// Load client's favourite hat on connect
-	if (GetConVarBool(dodhats_enable) && GetConVarBool(dodhats_clientprefs))
-	{
-		new clientID = GetClientUserId(client);
-		CreateTimer(1.0, LoadCookies, clientID, TIMER_FLAG_NO_MAPCHANGE);
-	}
+	// If cookies was not ready until connection, wait until OnClientCookiesCached()
+	if (IsValidClient(client)) LoadCookies(client);
 }
 
 /* OnConVarChange()
@@ -299,7 +257,9 @@ public Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 
 		// Randomize hat if enabled. Otherwise create client's selected hat
 		if (GetConVarBool(dodhats_random))
+		{
 			RandomHat();
+		}
 		else CreateTimer(0.1, Timer_CreateHat, clientID, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
@@ -322,7 +282,7 @@ public Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
  * ----------------------------------------------------------------------- */
 public Action:Command_Hat(client, args)
 {
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
 	{
 		decl String:text[64];
 
@@ -343,55 +303,10 @@ public Action:Command_Hat(client, args)
 			}
 		}
 
-		// Hat index (from 1 to 64)
-		if (args == 1)
-		{
-			GetCmdArg(1, text, sizeof(text));
-
-			// Make sure that was an index
-			if (strlen(text) < 3)
-			{
-				// Convert argument to a integer
-				new index = StringToInt(text);
-
-				// Notify client if he chosen invalid indexes
-				if (index < 1 || index > hats_count)
-				{
-					CPrintToChat(client, "%s%t", PREFIX, "Hat_No_Index", index, hats_count);
-				}
-
-				// Otherwise perform hat changing
-				else RemoveHat(client);
-			}
-
-			// Client has chosen hat by name
-			else
-			{
-				ReplaceString(text, sizeof(text), " ", "_");
-
-				// Checking all hats
-				for (new i = 0; i < hats_count; i++)
-				{
-					// Check if hat name is equal or like hat within a config file
-					if (StrContains(Models[i], text) != -1 || StrContains(Names[i], text) != -1)
-					{
-						RemoveHat(client);
-						return Plugin_Handled;
-					}
-				}
-
-				CPrintToChat(client, "%s%t", PREFIX, "Hat_Not_Found", text);
-			}
-		}
-
-		// Client just used !hat command
-		else ShowMenu(client);
+		ShowMenu(client);
 	}
 
-	// Client turned off ability of wearing hats or admin prevent this player to use hats
 	else CPrintToChat(client, "%s%t", PREFIX, "No Access");
-	//return Plugin_Handled;
-
 	return Plugin_Handled;
 }
 
@@ -401,29 +316,26 @@ public Action:Command_Hat(client, args)
  * ----------------------------------------------------------------------- */
 public Action:Command_DisableHat(client, args)
 {
-	if (GetConVarBool(dodhats_enable)/*  && IsValidClient(client) */)
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
 	{
 		// If hats was disabled before, enable it
-		if (!hats_enabled[client])
+		if (!hats_disabled[client])
 		{
-			hats_enabled[client] = true;
+			hats_disabled[client] = true;
 			RemoveHat(client);
 		}
 
 		// Otherwise enable it again
-		else hats_enabled[client] = false;
+		else hats_disabled[client] = false;
 
 		// Notify client about enabling or disabling hat
 		decl String:text[32];
-		Format(text, sizeof(text), "%T", hats_enabled[client] ? "Off" : "On", client);
+		Format(text, sizeof(text), "%T", hats_disabled[client] ? "Off" : "On", client);
 		CPrintToChat(client, "%s%t", PREFIX, "Hat_Ability", text);
 	}
 
 	// Hats is disabled or client is invalid (spectator/dead)
 	else CPrintToChat(client, "%s%t", PREFIX, "No Access");
-	//return Plugin_Handled;
-
-
 	return Plugin_Handled;
 }
 
@@ -433,7 +345,7 @@ public Action:Command_DisableHat(client, args)
  * ----------------------------------------------------------------------- */
 public Action:Command_ShowHat(client, args)
 {
-	if (GetConVarBool(dodhats_enable)/*  && IsValidClient(client) */)
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
 	{
 		// Get entity by hat index
 		new entity = hat_index[client];
@@ -467,8 +379,6 @@ public Action:Command_ShowHat(client, args)
 		CPrintToChat(client, "%s%t", PREFIX, "Hat_View", text);
 	}
 	else CPrintToChat(client, "%s%t", PREFIX, "No Access");
-	//return Plugin_Handled;
-
 
 	// Prevents 'unknown command' reply in client console
 	return Plugin_Handled;
@@ -481,7 +391,7 @@ public Action:Command_ShowHat(client, args)
 public Action:Admin_ReloadConfig(client, args)
 {
 	// Just load config once again
-	LoadConfig();
+	OnMapStart();
 
 	// Its a separate command which requires notices
 	CPrintToChat(client, "%s%t", PREFIX, "Reloaded Config");
@@ -494,13 +404,12 @@ public Action:Admin_ReloadConfig(client, args)
  * ----------------------------------------------------------------------- */
 public Action:Admin_AddHat(client, args)
 {
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
 	{
-		// !hatadd "oneargument"
 		if (args == 1)
 		{
 			// Add hat if overall amount of hats not exceed 64
-			if (hats_count < MAX_HATS)
+			if (hats_count <= MAX_HATS)
 			{
 				decl String:text[64], String:key[16];
 				GetCmdArg(1, text, sizeof(text));
@@ -528,21 +437,13 @@ public Action:Admin_AddHat(client, args)
 					// CloseHandle to prevent memory leak
 					CloseHandle(config);
 
-					// Nuff said
 					hats_count++;
 					CPrintToChat (client, "%s%t", PREFIX, "Added Hat", text, hats_count, MAX_HATS);
 				}
-
-				// Something went wrong
 				else CPrintToChat(client, "%s%t", PREFIX, "Cant Add", text);
 			}
-
-			// Whoops there is already too many hats
 			else CPrintToChat(client, "%s%t", PREFIX, "Reached Max", MAX_HATS);
-
 		}
-
-		// Show tutorial to admin if there is less or more than 1 arg
 		else CPrintToChat(client, "%s%t", PREFIX, "Usage AddHat");
 	}
 
@@ -555,7 +456,7 @@ public Action:Admin_AddHat(client, args)
  * ----------------------------------------------------------------------- */
 public Action:Admin_SaveHat(client, args)
 {
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
 	{
 		// We will deal with entity. And that entity should be hat model
 		new entity = hat_index[client];
@@ -586,14 +487,13 @@ public Action:Admin_SaveHat(client, args)
 				siz = GetEntPropFloat(entity, Prop_Send, "m_flModelScale");
 
 				// Delete older size section if size wasnt actually changed
-				if (siz == 1.0)
+				if (siz == 1.0000000)
 				{
-					if (KvGetFloat(config, "size", 999.9) != 999.9)
-						KvDeleteKey(config, "size");
+					KvDeleteKey(config, "size");
 				}
 
 				// Otherwise add size value
-				else   KvSetFloat(config, "size", siz);
+				else KvSetFloat(config, "size", siz);
 
 				hatsize[index] = siz;
 
@@ -617,7 +517,7 @@ public Action:Admin_SaveHat(client, args)
  * ----------------------------------------------------------------------- */
 public Action:Admin_DeleteHat(client, args)
 {
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
 	{
 		if (args == 1)
 		{
@@ -630,7 +530,7 @@ public Action:Admin_DeleteHat(client, args)
 
 			if (strlen(text) < 3)
 			{
-				// Make index safer
+				// Convert index
 				index = StringToInt(text);
 				if (index < 1 || index >= (hats_count + 1))
 				{
@@ -638,7 +538,7 @@ public Action:Admin_DeleteHat(client, args)
 					return Plugin_Handled;
 				}
 
-				// Hat was successfully deleted. Reduce amount of all avalible hats
+				// Hat was successfully deleted. Reduce amount of all available hats
 				index--;
 				strcopy(text, sizeof(text), Models[index]);
 			}
@@ -649,7 +549,7 @@ public Action:Admin_DeleteHat(client, args)
 			new Handle:config = OpenConfig();
 
 			// Make sure we are not exceed amount of MAX_HATS
-			for (new i = index; i < MAX_HATS; i++)
+			for (new i = index; i <= MAX_HATS; i++)
 			{
 				// Retrieve the hat index
 				FormatEx(key, sizeof(key), "%d", i + 1);
@@ -709,7 +609,6 @@ public Action:Admin_DeleteHat(client, args)
 		else
 		{
 			new index = hat_selected[client];
-
 			CPrintToChat(client, "%s%t", PREFIX, "Hat_Wearing", Names[index]);
 		}
 	}
@@ -724,7 +623,7 @@ public Action:Admin_DeleteHat(client, args)
 public Action:Admin_RandomizeHats(client, args)
 {
 	// Check if plugin is enabled
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
 	{
 		// Remove all hats right now, and check only valid clients
 		for (new i = 1; i <= MaxClients; i++)
@@ -743,7 +642,7 @@ public Action:Admin_RandomizeHats(client, args)
  * ----------------------------------------------------------------------- */
 public Action:Admin_ForceHat(client, args)
 {
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
 	{
 		// Return admin's selected hat
 		new selected = hat_selected[client];
@@ -765,22 +664,6 @@ public Action:Admin_ForceHat(client, args)
 	return Plugin_Handled;
 }
 
-/* Admin_DisableHat()
- *
- * Toggle the ability of wearing hats on specific players.
- * ----------------------------------------------------------------------- */
-public Action:Admin_DisableHat(client, args)
-{
-	if (GetConVarBool(dodhats_enable))
-	{
-		// Show a list of avalible clients to change their hat
-		hats_adminmenu[client] = true;
-		ShowPlayerList(client);
-	}
-
-	return Plugin_Handled;
-}
-
 /* Admin_ShowHatMenu()
  *
  * Displays a menu listing players, select one to change their hat.
@@ -788,8 +671,10 @@ public Action:Admin_DisableHat(client, args)
 public Action:Admin_ShowHatMenu(client, args)
 {
 	// Are plugin is enabled?
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
+	{
 		ShowPlayerList(client);
+	}
 
 	return Plugin_Handled;
 }
@@ -800,10 +685,14 @@ public Action:Admin_ShowHatMenu(client, args)
  * ----------------------------------------------------------------------- */
 public Action:Admin_ShowHatList(client, args)
 {
-	// Reply to admin a index of hat and full path to model
-	for (new i = 0; i < hats_count; i++)
-		ReplyToCommand(client, "\x04%d) \x05%s", i + 1, Models[i]);
-
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
+	{
+		// Reply to admin a index of hat and full path to model
+		for (new i = 0; i < hats_count; i++)
+		{
+			ReplyToCommand(client, "\x04%d) \x05%s", i + 1, Models[i]);
+		}
+	}
 	return Plugin_Handled;
 }
 
@@ -814,8 +703,10 @@ public Action:Admin_ShowHatList(client, args)
 public Action:Admin_ChangeAngles(client, args)
 {
 	// Show 'hat angles' menu
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
+	{
 		ShowAnglesMenu(client);
+	}
 
 	return Plugin_Handled;
 }
@@ -827,8 +718,10 @@ public Action:Admin_ChangeAngles(client, args)
 public Action:Admin_ChangeOrigin(client, args)
 {
 	// Same here, but about origin
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
+	{
 		ShowOriginMenu(client);
+	}
 
 	return Plugin_Handled;
 }
@@ -840,8 +733,10 @@ public Action:Admin_ChangeOrigin(client, args)
 public Action:Admin_ChangeSize(client, args)
 {
 	// Resize menu
-	if (GetConVarBool(dodhats_enable))
+	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
+	{
 		ShowSizeMenu(client);
+	}
 
 	return Plugin_Handled;
 }
@@ -866,9 +761,6 @@ public HatMenu(Handle:menu, MenuAction:action, client, index)
 {
 	switch (action)
 	{
-		// I dont know why, but menu handler is going to be invalid if there is no check for client > 0
-		// ToDo: fix it
-		case MenuAction_End: if (client > 0) CloseHandle(menu);
 		case MenuAction_Select:
 		{
 			// Retrieve target's hat
@@ -889,7 +781,7 @@ public HatMenu(Handle:menu, MenuAction:action, client, index)
 					// Actually this way fixes many issues...
 					if (CreateHat(target, index))
 					{
-						CPrintToChat(client, "%s%t", PREFIX, "Hat_Wearing", Names[index]);
+						CPrintToChat(target, "%s%t", PREFIX, "Hat_Wearing", Names[index]);
 					}
 				}
 
@@ -931,7 +823,6 @@ public PlayersMenu(Handle:menu, MenuAction:action, client, index)
 	// I like switch statements for menus
 	switch (action)
 	{
-		case MenuAction_End: if (client > 0) CloseHandle(menu);
 		case MenuAction_Select:
 		{
 			decl String:text[32];
@@ -940,53 +831,17 @@ public PlayersMenu(Handle:menu, MenuAction:action, client, index)
 			// Finding a target by client index
 			new target = StringToInt(text);
 			target = GetClientOfUserId(target);
-			if (hats_adminmenu[client])
+
+			// Show list of valid clients
+			if (IsValidClient(target))
 			{
-				// Adminmenu was called
-				hats_adminmenu[client] = false;
+				hat_target[client] = GetClientUserId(target);
 
-				// Sort players with blocked hats
-				if (hats_blocked[target])
-				{
-					hats_blocked[target] = false;
-
-					// And if client is valid...
-					if (IsValidClient(target))
-					{
-						// Unblock and re-create hat
-						RemoveHat(target);
-						CreateHat(target);
-
-						CPrintToChat(client, "%s%t", PREFIX, "Hat_Unblocked", target);
-					}
-				}
-
-				// Hats wasnt blocked > and now block hats for target
-				else
-				{
-					hats_blocked[target] = true;
-
-					// By STEAMID!
-					GetClientAuthString(target, SteamID[target], sizeof(SteamID));
-					CPrintToChat(client, "%s%t", PREFIX, "Hat_Blocked", client);
-
-					// Remove hat immediate
-					RemoveHat(target);
-				}
-			}
-
-			else
-			{
-				// Show list of valid clients
-				if (IsValidClient(target))
-				{
-					hat_target[client] = GetClientUserId(target);
-
-					// Show hats menu
-					ShowMenu(client);
-				}
+				// Show hats menu
+				ShowMenu(client);
 			}
 		}
+		case MenuAction_End: CloseHandle(menu);
 	}
 }
 
@@ -999,20 +854,12 @@ public AnglesMenu(Handle:menu, MenuAction:action, client, index)
 	switch (action)
 	{
 		// No need to do 'valid client check' here
-		case MenuAction_End: CloseHandle(menu);
-		case MenuAction_Cancel:
-		{
-			// Return to Angles menu on cancel or exit
-			if (index == MenuCancel_ExitBack)
-				ShowAnglesMenu(client);
-		}
 		case MenuAction_Select:
 		{
 			if (IsValidClient(client))
 			{
 				// Show angles menu on select
 				ShowAnglesMenu(client);
-
 				decl Float:ang[3], entity;
 
 				// We are going to change hat angles on all players. That makes modifying hat easier
@@ -1041,10 +888,15 @@ public AnglesMenu(Handle:menu, MenuAction:action, client, index)
 						}
 					}
 				}
-
 				CPrintToChat(client, "%s%t", PREFIX, "New Angles", ang[0], ang[1], ang[2]);
 			}
 		}
+		case MenuAction_Cancel:
+		{
+			// Return to Angles menu on cancel or exit
+			if (index == MenuCancel_ExitBack) ShowAnglesMenu(client);
+		}
+		case MenuAction_End: CloseHandle(menu);
 	}
 }
 
@@ -1056,13 +908,6 @@ public OriginMenu(Handle:menu, MenuAction:action, client, index)
 {
 	switch (action)
 	{
-		// Close handle... SM dev team should implement that for all MenuAction_End
-		case MenuAction_End: CloseHandle(menu);
-		case MenuAction_Cancel:
-		{
-			if (index == MenuCancel_ExitBack)
-				ShowOriginMenu(client);
-		}
 		// When we select something, show origin menu
 		case MenuAction_Select:
 		{
@@ -1102,6 +947,11 @@ public OriginMenu(Handle:menu, MenuAction:action, client, index)
 				CPrintToChat(client, "%s%t", PREFIX, "New Origin", ori[0], ori[1], ori[2]);
 			}
 		}
+		case MenuAction_Cancel:
+		{
+			if (index == MenuCancel_ExitBack) ShowOriginMenu(client);
+		}
+		case MenuAction_End: CloseHandle(menu);
 	}
 }
 
@@ -1113,14 +963,6 @@ public SizeMenu(Handle:menu, MenuAction:action, client, index)
 {
 	switch (action)
 	{
-		case MenuAction_End: CloseHandle(menu);
-
-		// Because MenuActions 'End' and 'Cancel' is different
-		case MenuAction_Cancel:
-		{
-			if (index == MenuCancel_ExitBack)
-				ShowSizeMenu(client);
-		}
 		case MenuAction_Select:
 		{
 			// Check if admin is valid. Still not sure needed that or not
@@ -1158,6 +1000,11 @@ public SizeMenu(Handle:menu, MenuAction:action, client, index)
 				CPrintToChat(client, "%s%t", PREFIX, "New Size", siz);
 			}
 		}
+		case MenuAction_Cancel:
+		{
+			if (index == MenuCancel_ExitBack) ShowSizeMenu(client);
+		}
+		case MenuAction_End: CloseHandle(menu);
 	}
 }
 
@@ -1180,13 +1027,12 @@ public SizeMenu(Handle:menu, MenuAction:action, client, index)
 LoadConfig()
 {
 	// Open hats configuration file (models, angles, origin...)
-	new i, Handle:config = OpenConfig();
-	decl String:text[64];
+	new i, Handle:config = OpenConfig(), String:text[64];
+	hats_count = 0;
 
-	// Reminds something?
-	for (i = 0; i < MAX_HATS; i++)
+	for (i = 0; i <= MAX_HATS; i++)
 	{
-		// Needed to prevent some bugs. Ex. it fixes an issue with 'zeroed' hat, which are not allowed
+		// Needed to prevent some bugs. Ex. it fixes an issue with 'zero' hat, which are not allowed
 		IntToString(i + 1, text, sizeof(text));
 		if (KvJumpToKey(config, text))
 		{
@@ -1204,7 +1050,7 @@ LoadConfig()
 				KvGetVector(config, "angles", hatangles[i]);
 				KvGetVector(config, "origin", hatposition[i]);
 
-				// 'size' section is stored as float
+				// 'size' section too
 				hatsize[i] = KvGetFloat(config, "size", 1.0);
 				hats_count++;
 
@@ -1214,23 +1060,41 @@ LoadConfig()
 				KvGetString(config, "name", Names[i], sizeof(text));
 
 				// If length of a string is invalid, rename hat by model name
-				if (strlen(Names[i]) == 0)
-					GetHatName(Names[i], i);
+				if (strlen(Names[i]) == 0) GetHatName(Names[i], i);
 			}
 
-			// Oops config is not avalible!
+			// Oops
 			else LogError("Cannot find the model '%s'", text);
-
-			// kv sux
 			KvRewind(config);
 		}
 	}
 
-	// Fuck memory leaks
 	CloseHandle(config);
 
 	// If config is exists but there is no hats, disable plugin
 	if (hats_count == 0) SetFailState("No models wtf?!");
+
+	if (dodhats_menu != INVALID_HANDLE)
+	{
+		CloseHandle(dodhats_menu);
+		dodhats_menu = INVALID_HANDLE;
+	}
+
+	// Create hats menu
+	dodhats_menu = CreateMenu(HatMenu);
+
+	// Add hats in menu as items (and check how many hats are available)
+	for (i = 0; i < hats_count; i++)
+	{
+		AddMenuItem(dodhats_menu, Models[i], Names[i]);
+	}
+
+	// Create a title (for normal and clientprefs menus)
+	decl String:title[32];
+	Format(title, sizeof(title), "%t", "Hat_Menu_Title");
+
+	SetMenuTitle(dodhats_menu, title);
+	SetMenuExitButton(dodhats_menu, true);
 }
 
 /* OpenConfig()
@@ -1245,12 +1109,10 @@ Handle:OpenConfig()
 	if (!FileExists(Path)) SetFailState("Cannot find the file configs/dod_hats.cfg");
 
 	// Creates a new KeyValues structur
-	new Handle:config = CreateKeyValues("Models");
+	new Handle:config = CreateKeyValues("Hats");
 
-	// Something went wrong!
 	if (!FileToKeyValues(config, Path))
 	{
-		// The Handle must always be closed!
 		CloseHandle(config);
 		SetFailState("Cannot load the file 'configs/dod_hats.cfg'");
 	}
@@ -1278,9 +1140,7 @@ SaveConfig(Handle:config)
  * ----------------------------------------------------------------------- */
 ShowMenu(client)
 {
-	// Make sure menu will appear only for valid clients. Its important
-	if (IsValidClient(client))
-		DisplayMenu(dodhats_menu, client, MENU_TIME_FOREVER);
+	if (IsValidClient(client)) DisplayMenu(dodhats_menu, client, MENU_TIME_FOREVER);
 }
 
 /* ShowPlayerList()
@@ -1293,10 +1153,8 @@ ShowPlayerList(client)
 	decl String:text[16], String:names[MAX_NAME_LENGTH];
 	new Handle:menu = CreateMenu(PlayersMenu);
 
-	// Show only avalible clients
 	for (new i = 1; i <= MaxClients; i++)
 	{
-		// Ignore server and spectators
 		if (client > 0 && IsClientInGame(i) && !IsClientObserver(i))
 		{
 			IntToString(GetClientUserId(i), text, sizeof(text));
@@ -1420,108 +1278,90 @@ GetHatName(String:text[64], i)
  * ----------------------------------------------------------------------- */
 CreateHat(client, index = -1)
 {
-	// Will be improved later
-	if (hats_blocked[client] || hats_enabled[client] || IsValidEntRef(hat_index[client]) == true || IsValidClient(client) == false)
-		return false;
-
-	// No multiple cases will run at same time
-	switch (index)
+	if (IsValidClient(client) && !hats_disabled[client] && !IsValidEntRef(hat_index[client]))
 	{
-		case -1: // Random hat
+		// No multiple cases will run at same time
+		switch (index)
 		{
-			// Getting the flag name (a b c d e ... )
-			decl String:text[32];
-			GetConVarString(dodhats_access, text, sizeof(text));
-			hat_flag = ReadFlagString(text);
-
-			// Check if flag is specified
-			if (hat_flag > 0)
+			case -1: // Random hat
 			{
-				// Get client access flag
-				new flagc = GetUserFlagBits(client);
+				// Getting the flag name (a b c d e ... )
+				decl String:text[32];
+				GetConVarString(dodhats_access, text, sizeof(text));
+				hat_flag = ReadFlagString(text);
 
-				if (!(flagc & ADMFLAG_ROOT) && !(flagc & hat_flag))
-					return false;
+				// Check if flag is specified
+				if (hat_flag != 0)
+				{
+					// Get client access flag
+					new flagc = GetUserFlagBits(client);
+
+					if (!(flagc & ADMFLAG_ROOT) && !(flagc & hat_flag))
+						return false;
+				}
+
+				// Randomize hats
+				index = GetRandomInt(0, hats_count-1);
 			}
-
-			// Randomize hats
-			index = GetRandomInt(0, hats_count-1);
-			//hat_save[client] = index + 1;
-		}
-		case -2: // Saved hats
-		{
-			// Retrieve hat index from clientprefs
-			index = hat_save[client];
-
-			// If index is valid, continue
-			if (index == 0)
+			case -2: // Saved hats
 			{
-				if (!IsFakeClient(client))
-					return false;
-				else /* Randomize hats for bots */
+				// Retrieve hat index from clientprefs
+				index = hat_save[client];
+				if (index == 0)
+				{
 					index = GetRandomInt(1, hats_count);
+				}
+				index--;
 			}
-			index--;
+			default: hat_save[client] = index + 1; // Specified hat
 		}
-		default: hat_save[client] = index + 1; // Specified hat
-	}
 
-	// Retrieve a number of hat
-	decl String:number[8];
-	IntToString(index + 1, number, sizeof(number));
+		// Retrieve a number
+		decl String:number[8];
+		IntToString(index + 1, number, sizeof(number));
 
-	// If hats should NOT be randomized - save selected hat
-	if (GetConVarBool(dodhats_clientprefs) && !GetConVarBool(dodhats_random) && !IsFakeClient(client))
-	{
-		// Save a hat number in a clientprefs database
-		SetClientCookie(client, dodhats_cookie, number);
-	}
-
-	// Creates an entity by string name, but does not spawn it
-	new entity = CreateEntityByName("prop_dynamic_override");
-
-	// Continue if entity is valid
-	if (entity != -1)
-	{
-		// Set a entity model to hat index
-		SetEntityModel(entity, Models[index]);
-
-		// And now spawn it
-		DispatchSpawn(entity);
-
-		// Resize hat depends on config value
-		SetEntPropFloat(entity, Prop_Send, "m_flModelScale", hatsize[index]);
-
-		// Some code that I copied and dont understand how it works
-		SetVariantString("!activator");
-		AcceptEntityInput(entity, "SetParent", client);
-
-		// DoD:S have an attachment 'head' instead of generic 'forward' or 'eyes'
-		SetVariantString("head");
-		AcceptEntityInput(entity, "SetParentAttachment");
-
-		// Spawn it in a specified position
-		TeleportEntity(entity, hatposition[index], hatangles[index], NULL_VECTOR);
-
-		// Change hat opacity depends on value (if specified)
-		if (GetConVarInt(dodhats_opacity) < 255)
+		// If hats should NOT be randomized - save selected hat
+		if (GetConVarBool(dodhats_clientprefs) && !GetConVarBool(dodhats_random))
 		{
-			// Sets an entity's render mode
-			SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
-
-			// Color should be the same, but not alpha...
-			SetEntityRenderColor(entity, 255, 255, 255, GetConVarInt(dodhats_opacity));
+			// Save a hat number in a clientprefs database
+			SetClientCookie(client, dodhats_cookie, number);
 		}
 
-		// Return and save hat index for next spawn
-		hat_selected[client] = index;
-		hat_index[client]    = EntIndexToEntRef(entity);
+		// Creates an entity by string name, but does not spawn it
+		new entity = CreateEntityByName("prop_dynamic_override");
 
-		// If hat can be seen, make it unseen!
-		if (!hat_drawn[client])
-			SDKHook(entity, SDKHook_SetTransmit, Hook_SetTransmit);
+		// Continue if entity is valid
+		if (entity != -1)
+		{
+			// Set a entity model to hat index
+			SetEntityModel(entity, Models[index]);
 
-		return true;
+			// And now spawn it
+			DispatchSpawn(entity);
+
+			// Resize hat depends on config value
+			SetEntPropFloat(entity, Prop_Send, "m_flModelScale", hatsize[index]);
+
+			// Some code that I copied and dont understand how it works
+			SetVariantString("!activator");
+			AcceptEntityInput(entity, "SetParent", client);
+
+			// DoD:S have an attachment 'head' instead of generic 'forward' or 'eyes'
+			SetVariantString("head");
+			AcceptEntityInput(entity, "SetParentAttachment");
+
+			// Spawn it in a specified position
+			TeleportEntity(entity, hatposition[index], hatangles[index], NULL_VECTOR);
+
+			// Return and save hat index for next spawn
+			hat_selected[client] = index;
+			hat_index[client]    = EntIndexToEntRef(entity);
+
+			// If hat can be seen, make it unseen!
+			if (!hat_drawn[client]) SDKHook(entity, SDKHook_SetTransmit, Hook_SetTransmit);
+
+			return true;
+		}
 	}
 
 	return false;
@@ -1538,8 +1378,7 @@ RemoveHat(client)
 	hat_index[client] = 0;
 
 	// Remove it via AcceptEntityInput
-	if (IsValidEntRef(entity))
-		AcceptEntityInput(entity, "Kill");
+	if (IsValidEntRef(entity)) AcceptEntityInput(entity, "KillHierarchy");
 }
 
 /* RandomHat()
@@ -1591,17 +1430,6 @@ ThirdPerson(client, bool:status)
  * -----------------------------------------------------------------------
 */
 
-/* HatCookieMenu()
- *
- * Shows an 'Select a hat' item in clientprefs menu.
- * ----------------------------------------------------------------------- */
-public HatCookieMenu(client, CookieMenuAction:action, any:info, String:buffer[], maxlen)
-{
-	// Dont let menu to be closed on select
-	if (action == CookieMenuAction_SelectOption)
-		ShowMenu(client);
-}
-
 /* IsValidClient()
  *
  * Checks if client is valid.
@@ -1609,7 +1437,7 @@ public HatCookieMenu(client, CookieMenuAction:action, any:info, String:buffer[],
 bool:IsValidClient(client)
 {
 	// Default 'valid client' check
-	return (client > 0 && IsClientInGame(client) && IsPlayerAlive(client) && !IsClientObserver(client) && !hats_blocked[client]) ? true : false;
+	return (client > 0 && client <= MaxClients && IsClientInGame(client) && IsPlayerAlive(client)) ? true : false;
 }
 
 /* IsVakidEntRef()
@@ -1636,24 +1464,21 @@ public Action:Hook_SetTransmit(entity, client)
  *
  * Loads a client preferences (which hat was chosen before).
  * ----------------------------------------------------------------------- */
-public Action:LoadCookies(Handle:timer, any:client)
+LoadCookies(client)
 {
-	client = GetClientOfUserId(client);
+	// Get client cookies, set type if available or default
+	decl String:cookie[3];
+	GetClientCookie(client, dodhats_cookie, cookie, sizeof(cookie));
 
-	if (client && !IsFakeClient(client))
+	// If cookie is not present, set random hat on a client until he save it
+	if (StrEqual(cookie, NULL_STRING))
 	{
-		// Get client cookies, set type if available or default
-		decl String:cookie[3];
-		GetClientCookie(client, dodhats_cookie, cookie, sizeof(cookie));
-
-		// If cookie is not present, set random hat on a client until he save it
-		if (StrEqual(cookie, NULL_STRING))
-			hat_save[client] = 0;
-		else /* Otherwise load client's preferenced hat */
-		{
-			new type = StringToInt(cookie);
-			hat_save[client] = type;
-		}
+		hat_save[client] = 0;
+	}
+	else /* Otherwise load client's preferenced hat */
+	{
+		new type = StringToInt(cookie);
+		hat_save[client] = type;
 	}
 }
 
@@ -1669,12 +1494,7 @@ public Action:Timer_CreateHat(Handle:timer, any:client)
 	// Be careful with timers
 	if (IsValidClient(client))
 	{
-		// Random index if random cvar is enabled
-		if (GetConVarBool(dodhats_random))
-			CreateHat(client, -1);
-
-		// Otherwise create chosen hat
-		if (GetConVarBool(dodhats_clientprefs) && !IsFakeClient(client))
-			CreateHat(client, -2);
+		if (GetConVarBool(dodhats_random))      CreateHat(client, -1);
+		if (GetConVarBool(dodhats_clientprefs)) CreateHat(client, -2);
 	}
 }
