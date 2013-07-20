@@ -255,12 +255,7 @@ public Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 		// Client may re-spawn. I wont give any chance so lets remove previous hat
 		RemoveHat(client);
 
-		// Randomize hat if enabled. Otherwise create client's selected hat
-		if (GetConVarBool(dodhats_random))
-		{
-			RandomHat();
-		}
-		else CreateTimer(0.1, Timer_CreateHat, clientID, TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(0.1, Timer_CreateHat, clientID, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
@@ -284,11 +279,11 @@ public Action:Command_Hat(client, args)
 {
 	if (GetConVarBool(dodhats_enable) && IsValidClient(client))
 	{
-		decl String:text[64];
+		decl String:flag[AdminFlags_TOTAL];
 
 		// Get the flag name from 'hat access' convar
-		GetConVarString(dodhats_access, text, sizeof(text));
-		hat_flag = ReadFlagString(text);
+		GetConVarString(dodhats_access, flag, sizeof(flag));
+		hat_flag = ReadFlagString(flag);
 
 		// Check if client is having admin flags
 		new flagc = GetUserFlagBits(client);
@@ -487,7 +482,10 @@ public Action:Admin_SaveHat(client, args)
 				siz = GetEntPropFloat(entity, Prop_Send, "m_flModelScale");
 
 				// Delete older size section if size wasnt actually changed
-				if (siz == 1.0000000)
+				if (siz <= 0.0
+				|| siz <= 0.0000000
+				|| siz == 1.0 ||
+				siz == 1.0000000)
 				{
 					KvDeleteKey(config, "size");
 				}
@@ -1027,7 +1025,8 @@ public SizeMenu(Handle:menu, MenuAction:action, client, index)
 LoadConfig()
 {
 	// Open hats configuration file (models, angles, origin...)
-	new i, Handle:config = OpenConfig(), String:text[64];
+	decl i, Handle:config, String:text[64];
+	config = OpenConfig();
 	hats_count = 0;
 
 	for (i = 0; i <= MAX_HATS; i++)
@@ -1153,8 +1152,10 @@ ShowPlayerList(client)
 	decl String:text[16], String:names[MAX_NAME_LENGTH];
 	new Handle:menu = CreateMenu(PlayersMenu);
 
+	// Loop through all clients
 	for (new i = 1; i <= MaxClients; i++)
 	{
+		// Validated clients
 		if (client > 0 && IsClientInGame(i) && !IsClientObserver(i))
 		{
 			IntToString(GetClientUserId(i), text, sizeof(text));
@@ -1276,33 +1277,32 @@ GetHatName(String:text[64], i)
  *
  * Attaches a hat on a player.
  * ----------------------------------------------------------------------- */
-CreateHat(client, index = -1)
+bool:CreateHat(client, index = -1)
 {
 	if (IsValidClient(client) && !hats_disabled[client] && !IsValidEntRef(hat_index[client]))
 	{
-		// No multiple cases will run at same time
+		// Getting the flag name (a b c d e ... )
+		decl String:flag[AdminFlags_TOTAL];
+		GetConVarString(dodhats_access, flag, sizeof(flag));
+		hat_flag = ReadFlagString(flag);
+
+		// Check if flag is specified
+		if (hat_flag > 0)
+		{
+			// Get client access flag
+			new flagc = GetUserFlagBits(client);
+
+			// HOTFIX: Before users could get a hat w/o access
+			if (!(flagc & ADMFLAG_ROOT) && !(flagc & hat_flag))
+			{
+				return false;
+			}
+		}
+
+		// Check what hat index has passed
 		switch (index)
 		{
-			case -1: // Random hat
-			{
-				// Getting the flag name (a b c d e ... )
-				decl String:text[32];
-				GetConVarString(dodhats_access, text, sizeof(text));
-				hat_flag = ReadFlagString(text);
-
-				// Check if flag is specified
-				if (hat_flag != 0)
-				{
-					// Get client access flag
-					new flagc = GetUserFlagBits(client);
-
-					if (!(flagc & ADMFLAG_ROOT) && !(flagc & hat_flag))
-						return false;
-				}
-
-				// Randomize hats
-				index = GetRandomInt(0, hats_count-1);
-			}
+			case -1: index = GetRandomInt(0, hats_count-1);
 			case -2: // Saved hats
 			{
 				// Retrieve hat index from clientprefs
