@@ -484,8 +484,8 @@ public Action:Admin_SaveHat(client, args)
 				// Delete older size section if size wasnt actually changed
 				if (siz <= 0.0
 				|| siz <= 0.0000000
-				|| siz == 1.0 ||
-				siz == 1.0000000)
+				|| siz == 1.0
+				|| siz == 1.0000000)
 				{
 					KvDeleteKey(config, "size");
 				}
