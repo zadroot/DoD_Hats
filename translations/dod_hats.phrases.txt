@@ -1,0 +1,151 @@
+"Phrases"
+{
+	"Hat_Menu_Title"
+	{
+		"en"			"Select your hat:"
+	}
+	"Hat_Wearing"
+	{
+		"#format"		"{1:s}"
+		"en"			"You are now wearing the {green}{1}{olive}."
+	}
+	"Hat_Changed"
+	{
+		"#format"		"{1:N}"
+		"en"			"Changed hat on {green}{1}{olive}."
+	}
+	"Hat_No_Index"
+	{
+		"#format"		"{1:d}{2:i}"
+		"en"			"Cannot find the hat index {green}{1}{olive}, values between {green}1{olive} and {green}{2}{olive}."
+	}
+	"Hat_Not_Found"
+	{
+		"#format"		"{1:s}"
+		"en"			"Cannot find the hat {green}{1}{olive}."
+	}
+	"Hat_Invalid"
+	{
+		"en"			"Invalid player selected."
+	}
+	"Hat_Unblocked"
+	{
+		"#format"		"{1:N}"
+		"en"			"Unblocked hats for {green}{1}{olive}"
+	}
+	"Hat_Blocked"
+	{
+		"#format"		"{1:N}"
+		"en"			"Blocked hats for {green}{1}{olive}"
+	}
+	"Hat_View"
+	{
+		"#format"		"{1:s}"
+		"en"			"{olive}Hat view has been turned {green}{1}{olive}."
+	}
+	"Hat_Ability"
+	{
+		"#format"		"{1:s}"
+		"en"			"{olive}You have turned {green}{1}{olive} the ability to wear hats."
+	}
+	"Hat_On"
+	{
+		"en"			"on"
+	}
+	"Hat_Off"
+	{
+		"en"			"off"
+	}
+	"Hat_Missing"
+	{
+		"en"			"You're not wearing a hat!"
+	}
+	"Reloaded Config"
+	{
+		"en"			"Successfully reloaded {green}dod_hats{olive} configuration file."
+	}
+	"Added Hat"
+	{
+		"#format"		"{1:s}{2:i}{3:i}"
+		"en"			"Added hat '{green}{1}{olive}' {2}/{3}"
+	}
+	"Cant Add"
+	{
+		"#format"		"{1:s}"
+		"en"			"Could not find the model '{green}{1}{olive}'. Not adding to config."
+	}
+	"Reached max"
+	{
+		"#format"		"{1:i}"
+		"en"			"Reached maximum number of hats {green}(max %d)"
+	}
+	"Usage AddHat"
+	{
+		"en"			"Usage: sm_hatadd \"{green}full model path{olive}\""
+	}
+	"Saved Hat"
+	{
+		"#format"		"{1:s}"
+		"en"			"Saved '{green}{1}{olive}' hat origin and angles."
+	}
+	"Cant Save"
+	{
+		"#format"		"{1:s}"
+		"en"			"{green}Warning: {olive}Could not save '{green}{1}{olive}' hat origin and angles!"
+	}
+	"Index Invalid"
+	{
+		"#format"		"{1:i}{2:i}"
+		"en"			"Cannot find the hat index {green}{1}{olive}, values between {green}1{olive} and {green}{2}{olive}"
+	}
+	"Deleted Hat"
+	{
+		"#format"		"{1:s}"
+		"en"			"You have deleted the hat '{green}{1}{olive}'"
+	}
+	"Cant Delete"
+	{
+		"#format"		"{1:s}"
+		"en"			"Could not delete hat, did not find model '{green}{1}{olive}'"
+	}
+	"Forced Hat"
+	{
+		"#format"		"{1:s}"
+		"en"			"Attached '{green}{1}{olive}' on all players."
+	}
+	"New Angles"
+	{
+		"#format"		"{1:.0f}{2:.0f}{3:.0f}"
+		"en"			"New hat angles: {green}{1} {2} {3}"
+	}
+	"New Origin"
+	{
+		"#format"		"{1:.1f}{2:.1f}{3:.1f}"
+		"en"			"New hat origin: {green}{1} {2} {3}"
+	}
+	"New Size"
+	{
+		"#format"		"{1:.1f}"
+		"en"			"New hat size: {green}{1}"
+	}
+	"Toggle on player"
+	{
+		"en"			"Enable or disable hats for player:"
+	}
+	"Change on player"
+	{
+		"en"			"Select a player to change hat:"
+	}
+	"Set Angles"
+	{
+		"en"			"Set hat angles:"
+	}
+	"Set Origin"
+	{
+		"en"			"Set hat origin:"
+	}
+	"Set Size"
+	{
+		"en"			"Set hat size:"
+	}
+}
