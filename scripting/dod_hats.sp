@@ -25,7 +25,7 @@
 #define PREFIX         "{green}[Hats]{olive} "
 #define UPDATE_URL     "https://raw.github.com/zadroot/DoD_Hats/master/updater.txt"
 #define DOD_MAXPLAYERS 33
-#define	MAX_HATS       64
+#define MAX_HATS       64
 
 // ====[ VARIABLES ]======================================================
 new	Handle:dodhats_enable      = INVALID_HANDLE,
@@ -502,7 +502,7 @@ public Action:Admin_DeleteHat(client, args)
 		{
 			decl String:text[64], String:model[64], String:key[16], index;
 
-			// Static is better maybe?
+			// Static is better maybe
 			new bool:isDeleted;
 
 			// Retrieves a command argument given its index
@@ -674,7 +674,7 @@ public Action:Admin_ShowHatList(client, args)
 		// Reply to admin a index of hat and full path to model
 		for (new i; i < hats_count; i++)
 		{
-			ReplyToCommand(client, "\x04%d) \x05%s", i + 1, Models[i]);
+			ReplyToCommand(client, "\x04%d) \x05%s", ++i, Models[i]);
 		}
 	}
 	return Plugin_Handled;
@@ -1076,12 +1076,12 @@ LoadConfig()
 		AddMenuItem(dodhats_menu, Models[i], Names[i]);
 	}
 
-	/*DOWNLOADER SUPPORT*/
-	// Get the download tables config
+	/**DOWNLOADER SUPPORT*/
+	// Get the config with all defined files
 	decl String:filepath[PLATFORM_MAX_PATH], Handle:file;
 	BuildPath(Path_SM, filepath, sizeof(filepath), "configs/dod_hats_download.ini");
 
-	// Check whether or not plugin config is exists
+	// Check whether or not config is exists
 	if ((file = OpenFile(filepath, "r")) != INVALID_HANDLE)
 	{
 		decl String:fileline[PLATFORM_MAX_PATH];
@@ -1089,14 +1089,14 @@ LoadConfig()
 		// Read every line in config
 		while (ReadFileLine(file, fileline, sizeof(fileline)))
 		{
-			// Force DL
+			// Force to DL
 			if (FileExists(fileline)) AddFileToDownloadsTable(fileline);
 		}
 	}
 
 	// Close config handle
 	CloseHandle(file);
-	/*END DOWNLOADER SUPPORT*/
+	/**END DOWNLOADER SUPPORT*/
 
 	// Create a title (for normal and clientprefs menus)
 	decl String:title[32];
@@ -1324,7 +1324,7 @@ bool:CreateHat(client, index = -1)
 				}
 				index--;
 			}
-			default: hat_save[client] = index + 1; // Specified hat
+			default: hat_save[client] = index++; // Specified hat
 		}
 
 		// Retrieve a number
