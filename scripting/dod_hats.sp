@@ -93,11 +93,11 @@ public OnPluginStart()
 	HookConVarChange(dodhats_enable, OnConVarChange);
 
 	// Create/register client and admin commands
-	RegConsoleCmd("sm_hat",       Command_Hat,                       "Displays a menu of hats allowing players to change what they are wearing");
-	RegConsoleCmd("sm_hats",      Command_Hat,                       "Alias for \"sm_hat\"");
-	RegConsoleCmd("sm_hatoff",    Command_DisableHat,                "Toggle to turn on or off the ability of wearing hats");
-	RegConsoleCmd("sm_hatshow",   Command_ShowHat,                   "Toggle to see or hide your own hat");
-	RegConsoleCmd("sm_hatview",   Command_ShowHat,                   "Alias for \"sm_hatview\"");
+	RegConsoleCmd("sm_hat",        Command_Hat,                       "Displays a menu of hats allowing players to change what they are wearing");
+	RegConsoleCmd("sm_hats",       Command_Hat,                       "Alias for \"sm_hat\"");
+	RegConsoleCmd("sm_hatoff",     Command_DisableHat,                "Toggle to turn on or off the ability of wearing hats");
+	RegConsoleCmd("sm_hatshow",    Command_ShowHat,                   "Toggle to see or hide your own hat");
+	RegConsoleCmd("sm_hatview",    Command_ShowHat,                   "Alias for \"sm_hatview\"");
 	RegAdminCmd  ("sm_hatreload",  Admin_ReloadConfig,  ADMFLAG_ROOT, "Reload hats configuration file");
 	RegAdminCmd  ("sm_hatrefresh", Admin_ReloadConfig,  ADMFLAG_ROOT, "Alias for \"sm_hatreload\"");
 	RegAdminCmd  ("sm_hatc",       Admin_ShowHatMenu,   ADMFLAG_ROOT, "Displays a menu listing players, select one to change their hat");
@@ -133,7 +133,7 @@ public OnPluginStart()
 	if (LibraryExists("updater")) Updater_AddPlugin(UPDATE_URL);
 #endif
 
-	// Creates a new Client preference cookies
+	// Creates a new clientprefs cookies!
 	dodhats_cookie = RegClientCookie("dod_hats", "Hat Model", CookieAccess_Protected);
 }
 
@@ -1040,7 +1040,7 @@ LoadConfig()
 				// Copy hat names and save it as globals
 				strcopy(Models[i], sizeof(text), text);
 
-				// Precache hats models right after config created
+				// Precache all hat models right after reading cfg
 				PrecacheModel(Models[i]);
 
 				KvGetString(config, "name", Names[i], sizeof(text));
