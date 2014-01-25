@@ -156,10 +156,6 @@ public OnMapStart()
 {
 	// Load all hats, also force all hat files to be downloaded to clients
 	LoadConfig();
-
-	// Precache hats
-	for (new i; i < hats_count; i++)
-		PrecacheModel(Models[i]);
 }
 #if defined _updater_included
 /* OnLibraryAdded()
@@ -404,7 +400,7 @@ public Action:Admin_AddHat(client, args)
 					new Handle:config = OpenConfig();
 
 					// Write a new number and model
-					IntToString(hats_count++, key, sizeof(text));
+					IntToString(hats_count, key, sizeof(text));
 					KvJumpToKey(config, key, true);
 					KvSetString(config, "model", text);
 
@@ -444,7 +440,7 @@ public Action:Admin_SaveHat(client, args)
 			new index = hat_selected[client];
 
 			decl String:text[4];
-			IntToString(index++, text, sizeof(text));
+			IntToString(index, text, sizeof(text));
 
 			// Sets the current position in the KeyValues to the given key
 			if (KvJumpToKey(config, text))
@@ -537,7 +533,7 @@ public Action:Admin_DeleteHat(client, args)
 			for (new i = index; i <= MAX_HATS; i++)
 			{
 				// Retrieve the hat index
-				FormatEx(key, sizeof(key), "%d", ++i);
+				FormatEx(key, sizeof(key), "%d", i);
 				if (KvJumpToKey(config, key))
 				{
 					// Check if hat was deleted before
@@ -674,7 +670,7 @@ public Action:Admin_ShowHatList(client, args)
 		// Reply to admin a index of hat and full path to model
 		for (new i; i < hats_count; i++)
 		{
-			ReplyToCommand(client, "\x04%d) \x05%s", ++i, Models[i]);
+			ReplyToCommand(client, "\x04%d) \x05%s", i+1, Models[i]);
 		}
 	}
 	return Plugin_Handled;
@@ -1012,21 +1008,22 @@ public SizeMenu(Handle:menu, MenuAction:action, client, index)
 LoadConfig()
 {
 	// Open hats configuration file (models, angles, origin...)
-	decl i, Handle:config, String:text[64];
+	decl i, Handle:config, String:text[PLATFORM_MAX_PATH];
 	config = OpenConfig();
 	hats_count = 0;
 
 	for (i = 0; i <= MAX_HATS; i++)
 	{
 		// Needed to prevent some bugs. Ex. it fixes an issue with 'zero' hat, which are not allowed
-		IntToString(i++, text, sizeof(text));
+		IntToString(i+1, text, sizeof(text));
 		if (KvJumpToKey(config, text))
 		{
 			KvGetString(config, "model", text, sizeof(text));
 
 			// Remove a whitespace characters from the beginning and end of a string
 			TrimString(text);
-			if (strlen(text) == 0)
+
+			if (!strlen(text))
 				break;
 
 			// Check if config is exists
@@ -1036,17 +1033,20 @@ LoadConfig()
 				KvGetVector(config, "angles", hatangles[i]);
 				KvGetVector(config, "origin", hatposition[i]);
 
-				// 'size' section too
+				// size section
 				hatsize[i] = KvGetFloat(config, "size", 1.0);
 				hats_count++;
 
 				// Copy hat names and save it as globals
 				strcopy(Models[i], sizeof(text), text);
 
+				// Precache hats models right after config created
+				PrecacheModel(Models[i]);
+
 				KvGetString(config, "name", Names[i], sizeof(text));
 
-				// If length of a string is invalid, rename hat by model name
-				if (strlen(Names[i]) == 0)
+				// If length of a string is invalid - rename hat by model name
+				if (!strlen(Names[i]))
 					GetHatName(Names[i], i);
 			}
 
@@ -1324,12 +1324,12 @@ bool:CreateHat(client, index = -1)
 				}
 				index--;
 			}
-			default: hat_save[client] = index++; // Specified hat
+			default: hat_save[client] = index+1; // Specified hat
 		}
 
 		// Retrieve a number
 		decl String:number[8];
-		IntToString(index++, number, sizeof(number));
+		IntToString(index, number, sizeof(number));
 
 		// If hats should NOT be randomized - save selected hat
 		if (GetConVarBool(dodhats_clientprefs) && !GetConVarBool(dodhats_random))
