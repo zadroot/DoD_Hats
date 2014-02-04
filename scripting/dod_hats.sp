@@ -61,7 +61,7 @@ public Plugin:myinfo =
 	description = "Attaches specified models to players above their head",
 	version     = PLUGIN_VERSION,
 	url         = "http://dodsplugins.com/"
-};
+}
 
 
 /**
@@ -89,7 +89,7 @@ public OnPluginStart()
 	dodhats_random      = CreateConVar("dod_hats_random",  "1",   "Whether or not attach a random hat when player is respawning (saved hats will be ignored)",  FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	dodhats_clientprefs = CreateConVar("dod_hats_save",    "1",   "Whether or not save players selected hats and attach when they spawn or rejoin the server",  FCVAR_PLUGIN, true, 0.0, true, 1.0);
 
-	// Hook only one convar changing - on enable toggle
+	// Hook only one convar changing - on enable toggling
 	HookConVarChange(dodhats_enable, OnConVarChange);
 
 	// Create/register client and admin commands
@@ -133,7 +133,7 @@ public OnPluginStart()
 	if (LibraryExists("updater")) Updater_AddPlugin(UPDATE_URL);
 #endif
 
-	// Creates a new clientprefs cookies!
+	// Creates a new clientprefs cookies
 	dodhats_cookie = RegClientCookie("dod_hats", "Hat Model", CookieAccess_Protected);
 }
 
